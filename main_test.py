@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2016 Google Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import endpoints
+import mock
+from protorpc import message_types
+import pytest
+
 import main
 
 
-def test_index():
-    main.app.testing = True
-    client = main.app.test_client()
+def test_echo():
+    api = main.EchoApi()
+    request = main.EchoApi.echo.remote.request_type(content='Hello world!')
+    response = api.echo(request)
+    assert 'Hello world!' == response.content
 
-    r = client.get('/')
-    assert r.status_code == 200
-    assert 'Hello World' in r.data.decode('utf-8')
+
+def test_get_user_email():
+    api = main.EchoApi()
+
+    with mock.patch('main.endpoints.get_current_user') as user_mock:
+        user_mock.return_value = None
+        with pytest.raises(endpoints.UnauthorizedException):
+            api.get_user_email(message_types.VoidMessage())
+
+        user_mock.return_value = mock.Mock()
+        user_mock.return_value.email.return_value = 'user@example.com'
+        response = api.get_user_email(message_types.VoidMessage())
+        assert 'user@example.com' == response.content
